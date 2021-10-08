@@ -1,6 +1,14 @@
 const colours = ['#ebdbd4', '#f9f4e1', '#dee6ed', '#f6d6de', '#edecdd', '#d9e5ae'];
 
-const getFlow = (container, items, { randomColours = false, margin = 20, fontSize = 20, xOffset = 50, boxHeight = 30 } = {}) => {
+const getFlow = (container, items, opts = {}) => {
+    let {
+        randomColours = false,
+        margin = 20,
+        fontSize = 20,
+        xOffset = 50,
+        boxHeight = 30,
+        radius = 5
+    } = opts;
     const containerDimensions = container.getBoundingClientRect();
     const svg = createSVGContainer(container);
     boxHeight = boxHeight + margin;
@@ -24,7 +32,7 @@ const getFlow = (container, items, { randomColours = false, margin = 20, fontSiz
             const rect = cE(
                 'rect',
                 {
-                    height: boxHeight, stroke: 'black', fill: bgColour, 'stroke-width': 1
+                    height: boxHeight, stroke: 'black', fill: bgColour, 'stroke-width': 1, rx: radius
                 }
             );
             const textBox = cE(
@@ -62,12 +70,12 @@ const getFlow = (container, items, { randomColours = false, margin = 20, fontSiz
                 x = (idx ? getF(arr[idx-1].rect, 'x') - (textWidth + margin) - xOffset : 0 - margin);
             }
             const endOfRectX = x + xOffset + textWidth + margin;
-            if (endOfRectX > containerDimensions.width && dir === 1) {
+            if (endOfRectX > (containerDimensions.width - xOffset) && dir === 1) {
                 y = y + boxHeight + margin;
                 dir = 0;
                 x = containerDimensions.width - (textWidth + margin + xOffset);
             }
-            if (x < 0 && dir === 0) {
+            if (x < xOffset && dir === 0) {
                 y = y + boxHeight + margin;
                 dir = 1;
                 x = xOffset;
@@ -76,7 +84,7 @@ const getFlow = (container, items, { randomColours = false, margin = 20, fontSiz
             e.rect.setAttribute('x', x);
             e.rect.setAttribute('y', y);
             e.textBox.setAttribute('x', x + (margin / 2));
-            e.textBox.setAttribute('y', y + (boxHeight / 2) + (e.textBox.getBBox().height / 2));
+            e.textBox.setAttribute('y', y + (boxHeight / 2) + (e.textBox.getBBox().height / 3));
         }
     );
     drawArrows(entities, svg);
@@ -94,6 +102,7 @@ const cE = (name, attr) => {
 
 const drawArrows = (entities, svg) => {
     const tSize = 7;
+    const leSize = 20;
     const drawStraightLine = ({ x1, y1, x2, y2 }) => {
         const line = cE('line', { 'stroke-width': 1 });
         line.setAttribute('style', 'stroke:rgb(0,0,0);stroke-width:1');
@@ -117,7 +126,7 @@ const drawArrows = (entities, svg) => {
     const drawBridgeLine = ({ x1, y1, x2, y2 }, isRight = true) => {
         let elements = [];
         if (isRight) {
-            const r = Math.max(x1, x2) + 10;
+            const r = Math.max(x1, x2) + leSize;
             return [
                 drawStraightLine({
                     x1, y1,
@@ -134,7 +143,7 @@ const drawArrows = (entities, svg) => {
                 drawTriangle(x2, y2, false)
             ];
         } else {
-            const l = Math.min(x1, x2) - 10;
+            const l = Math.min(x1, x2) - leSize;
             return [
                 drawStraightLine({
                     x1, y1,
