@@ -4,12 +4,12 @@ const defaultOptions = {
     xOffset: 50, // space between boxes
     boxHeight: 30,
     radius: 5, // box border-radius
-    colours: ['#ebdbd4', '#f9f4e1', '#dee6ed', '#f6d6de', '#edecdd', '#d9e5ae'],
+    colours: ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff'],
     triangleSize: 7,
     leadingEdgeSize: 20, // how far out the new-line edge sticks
 };
 
-const getFlow = (container, items, opts = {}) => {
+const render = (container, items, opts = {}) => {
     if (!Array.isArray(items) || !items.length) {
         throw new Error('items needs to be an array of strings or objects');
     }
@@ -97,6 +97,8 @@ const getFlow = (container, items, opts = {}) => {
         }
     );
     drawArrows(entities, svg, { triangleSize, leadingEdgeSize });
+    const lastBox = entities.slice(-1)[0].rect.getBBox();
+    svg.setAttribute('height', lastBox.y + lastBox.height + margin);
     container.appendChild(svg);
     offscreen.remove();
 }
@@ -201,5 +203,6 @@ const getOffscreen = () => {
 };
 
 module.exports = {
-    getFlow
+    defaultOptions,
+    render
 };
