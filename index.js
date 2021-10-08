@@ -9,9 +9,7 @@ const getFlow = (container, items, { randomColours = false, margin = 20, fontSiz
     if (!Array.isArray(items) || !items.length) {
         throw new Error('items needs to be an array of strings or objects');
     }
-    items = typeof items[0] === 'string'
-        ? items.map(item => ({ text: item }))
-        : items;
+    items = items.map(item => typeof item === 'string' ? ({ text: item }) : item);
     const entities = items.reduce(
         (acc, { text, bgColour, textColour = 'black' }, idx) => {
             if (randomColours && !bgColour) {
