@@ -1,4 +1,4 @@
-# to-me-to-you
-Simple flow type diagram for my own personal gratification
+# to-me-to-you - WIP
+Simple SVG flow type diagram renderer for my own personal gratification... very much WIP
 
 ![Example](example.png)
