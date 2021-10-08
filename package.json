@@ -1,0 +1,15 @@
+{
+  "name": "to-me-to-you",
+  "version": "0.0.1",
+  "description": "Simple flow chart graphics for the web",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "browserify index.js -s toMeToYou -o dist/bundle.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "browserify": "^17.0.0"
+  }
+}
