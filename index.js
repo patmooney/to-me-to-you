@@ -1,26 +1,33 @@
-const colours = ['#ebdbd4', '#f9f4e1', '#dee6ed', '#f6d6de', '#edecdd', '#d9e5ae'];
+const defaultOptions = {
+    margin: 20, // text to box margin
+    fontSize: 20,
+    xOffset: 50, // space between boxes
+    boxHeight: 30,
+    radius: 5, // box border-radius
+    colours: ['#ebdbd4', '#f9f4e1', '#dee6ed', '#f6d6de', '#edecdd', '#d9e5ae'],
+    triangleSize: 7,
+    leadingEdgeSize: 20, // how far out the new-line edge sticks
+};
 
 const getFlow = (container, items, opts = {}) => {
-    let {
-        randomColours = false,
-        margin = 20,
-        fontSize = 20,
-        xOffset = 50,
-        boxHeight = 30,
-        radius = 5
-    } = opts;
-    const containerDimensions = container.getBoundingClientRect();
-    const svg = createSVGContainer(container);
-    boxHeight = boxHeight + margin;
-    let colourIdx = parseInt(Math.random() * 6);
-
     if (!Array.isArray(items) || !items.length) {
         throw new Error('items needs to be an array of strings or objects');
     }
     items = items.map(item => typeof item === 'string' ? ({ text: item }) : item);
+
+    let {
+        margin, fontSize, xOffset, boxHeight,
+        radius, colours, triangleSize, leadingEdgeSize
+    } = { ...defaultOptions, ...opts };
+
+    const containerDimensions = container.getBoundingClientRect();
+    const svg = createSVGContainer(container);
+    boxHeight = boxHeight + margin;
+    let colourIdx = parseInt(Math.random() * (colours || []).length);
+
     const entities = items.reduce(
-        (acc, { text, bgColour, textColour = 'black' }, idx) => {
-            if (randomColours && !bgColour) {
+        (acc, { text, bgColour, textColour = 'black' }) => {
+            if (Array.isArray(colours) && colours.length && !bgColour) {
                 bgColour = colours[colourIdx++];
                 if (colourIdx >= colours.length) {
                     colourIdx = 0;
@@ -58,8 +65,10 @@ const getFlow = (container, items, opts = {}) => {
 
     const offscreen = getOffscreen();
     offscreen.appendChild(svg);
-    const getX = rect => parseFloat(rect.getAttribute('x')) + parseFloat(rect.getAttribute('width'));
+
     const getF = (rect, attr) => parseFloat(rect.getAttribute(attr));
+    const getX = rect => getF(rect, 'x') + getF(rect, 'width');
+
     let dir = 1;
     let y = margin;
     entities.forEach(
@@ -87,7 +96,7 @@ const getFlow = (container, items, opts = {}) => {
             e.textBox.setAttribute('y', y + (boxHeight / 2) + (e.textBox.getBBox().height / 3));
         }
     );
-    drawArrows(entities, svg);
+    drawArrows(entities, svg, { triangleSize, leadingEdgeSize });
     container.appendChild(svg);
     offscreen.remove();
 }
@@ -100,67 +109,38 @@ const cE = (name, attr) => {
     return el;
 }
 
-const drawArrows = (entities, svg) => {
-    const tSize = 7;
-    const leSize = 20;
-    const drawStraightLine = ({ x1, y1, x2, y2 }) => {
+const drawArrows = (entities, svg, { triangleSize = 7, leadingEdgeSize = 20 } = {}) => {
+    const drawStraightLine = (coords) => {
         const line = cE('line', { 'stroke-width': 1 });
         line.setAttribute('style', 'stroke:rgb(0,0,0);stroke-width:1');
-        line.setAttribute('x1', x1);
-        line.setAttribute('x2', x2);
-        line.setAttribute('y1', y1);
-        line.setAttribute('y2', y2);
+        Object.entries(coords).forEach(([k, v]) => line.setAttribute(k, v));
         return line;
     };
     const drawTriangle = (x, y, isRight) => {
-        const triangleOffset = isRight ? 0 - tSize : tSize;
-        const poly = cE('polygon', { 
+        const triangleOffset = isRight ? 0 - triangleSize : triangleSize;
+        const poly = cE('polygon', {
             points: [
                 [x, y].join(','),
-                [x + triangleOffset, y - tSize].join(','),
-                [x + triangleOffset, y + tSize].join(',')
+                [x + triangleOffset, y - triangleSize].join(','),
+                [x + triangleOffset, y + triangleSize].join(',')
             ].join(' ')
         });
         return poly;
     };
     const drawBridgeLine = ({ x1, y1, x2, y2 }, isRight = true) => {
-        let elements = [];
-        if (isRight) {
-            const r = Math.max(x1, x2) + leSize;
-            return [
-                drawStraightLine({
-                    x1, y1,
-                    x2: r, y2: y1
-                }),
-                drawStraightLine({
-                    x1: r, y1,
-                    x2: r, y2
-                }),
-                drawStraightLine({
-                    x1: r, y1: y2,
-                    x2, y2 
-                }),
-                drawTriangle(x2, y2, false)
-            ];
-        } else {
-            const l = Math.min(x1, x2) - leSize;
-            return [
-                drawStraightLine({
-                    x1, y1,
-                    x2: l, y2: y1
-                }),
-                drawStraightLine({
-                    x1: l, y1,
-                    x2: l, y2
-                }),
-                drawStraightLine({
-                    x1: l, y1: y2,
-                    x2, y2 
-                }),
-                drawTriangle(x2, y2, true)
-            ];
-        }
-        return [];
+        const path = cE('path', { 'stroke-width': 1, fill: 'none' });
+        path.setAttribute('style', 'stroke:rgb(0,0,0);stroke-width:1');
+        const e = isRight ? Math.max(x1, x2) + leadingEdgeSize : Math.min(x1, x2) - leadingEdgeSize;
+        path.setAttribute(
+            'd',
+            [
+                `M${x1} ${y1}`,
+                `L${e} ${y1}`,
+                `L${e} ${y2}`,
+                `L${x2} ${y2}`
+            ].join(' ')
+        );
+        return [path, drawTriangle(x2, y2, !isRight)];
     };
     entities.forEach(
         (ent, idx) => {
@@ -172,30 +152,23 @@ const drawArrows = (entities, svg) => {
                 from: prev.rect.getBBox(),
                 to: ent.rect.getBBox()
             };
-            const isRight = idx > 1
-                ? entities[idx-2].rect.getBBox().x < dims.from.x
-                : true;
             if (dims.from.y !== dims.to.y) {
-                if (isRight) {
-                    drawBridgeLine({
-                        x1: dims.from.x + dims.from.width, y1: dims.from.y + (dims.from.height / 2),
-                        x2: dims.to.x + dims.to.width, y2: dims.to.y + (dims.to.height / 2)
-                    }).forEach(item => svg.appendChild(item));
-                } else {
-                    drawBridgeLine({
-                        x1: dims.from.x, y1: dims.from.y + (dims.from.height / 2),
-                        x2: dims.to.x, y2: dims.to.y + (dims.to.height / 2)
-                    }, false).forEach(item => svg.appendChild(item));
-                }
-            } else if (dims.from.x > dims.to.x) {
-                [
-                    drawStraightLine({ x1: dims.from.x, y1: dims.from.y + (dims.from.height / 2), x2: dims.to.x + dims.to.width, y2: dims.to.y + (dims.to.height / 2) }),
-                    drawTriangle(dims.to.x + dims.to.width, dims.to.y + (dims.to.height / 2), false)
-                ].forEach(item => svg.appendChild(item));
+                const isRight = idx > 1
+                    ? entities[idx-2].rect.getBBox().x < dims.from.x
+                    : true;
+                const fromX = dims.from.x + (isRight ? dims.from.width : 0);
+                const toX = dims.to.x + (isRight ? dims.to.width : 0);
+                drawBridgeLine({
+                    x1: fromX, y1: dims.from.y + (dims.from.height / 2),
+                    x2: toX, y2: dims.to.y + (dims.to.height / 2)
+                }, isRight).forEach(item => svg.appendChild(item));
             } else {
+                const nextRight = dims.from.x < dims.to.x;
+                const fromX = dims.from.x + (nextRight ? dims.from.width : 0);
+                const toX = dims.to.x + (nextRight ? 0 : dims.to.width);
                 [
-                    drawStraightLine({ x1: dims.from.x + dims.from.width, y1: dims.from.y + (dims.from.height / 2), x2: dims.to.x, y2: dims.to.y + (dims.to.height / 2) }),
-                    drawTriangle(dims.to.x, dims.to.y + (dims.to.height / 2), true)
+                    drawStraightLine({ x1: fromX, y1: dims.from.y + (dims.from.height / 2), x2: toX, y2: dims.to.y + (dims.to.height / 2) }),
+                    drawTriangle(toX, dims.to.y + (dims.to.height / 2), nextRight)
                 ].forEach(item => svg.appendChild(item));
             }
         }
